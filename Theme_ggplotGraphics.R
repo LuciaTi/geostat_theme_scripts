@@ -2,6 +2,8 @@
 ## Theme _ ggplot - Graphics ##
 ###############################
 
+setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts")
+
 library(ggplot2)
 
 ## 1) Plotting self created label ####
