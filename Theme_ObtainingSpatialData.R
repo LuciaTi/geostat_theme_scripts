@@ -2,7 +2,7 @@
 ## Theme _ Obtaining Spatial Data ##
 ############################
 
-setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_course_scripts/geostat_course_scripts")
+setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts")
 
 ## 1) Precipitation Data of Germany ####
 
