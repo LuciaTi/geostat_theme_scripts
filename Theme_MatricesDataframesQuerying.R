@@ -1,6 +1,8 @@
 ###################################
-## Theme _ Matrices, Dataframes and querying ##
+## Theme _ Matrices, Dataframes, Lists and querying ##
 ###################################
+
+setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts")
 
 
 ## 1) Creating Matrices ####
@@ -99,3 +101,27 @@ df_3[df_3$value <=3 & df_3$value >= 2, ]
 df_3$new_col <- df_3$measure1*df_3$measure2 # add a new column to the data frame (here multiplication from existing columns)
 
 
+
+## 5) Creating and querying list-objects ####
+
+a <- runif(199)
+b <- c("aa", "bb", "cc", "dd", "ee")
+
+c <- list(a,b)
+c 
+# --> objects are not joined, they are just together
+# a lot of objects (also differnt classes) can be stored together
+
+# query data
+c[2] # the second object
+c[[2]] # same
+
+c[[2]][1] # the first entry of second object
+
+a <- list(obj_1 = runif(100), obj_2 = c("aa", "bb"), obj_3 = c(1,2,4))
+a$obj_1
+a["obj_1"] # equal to command before
+a[[1]] # equal to command before
+
+a <- list(m1 = matrix(runif(50), nrow =5), v1 =c(1,6,10), df1 = data.frame(a = runif(100), b =rnorm(100)))
+a$df1[ ,1] # query the first column from object df1 from the list a.
