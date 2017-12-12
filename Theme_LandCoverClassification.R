@@ -7,11 +7,12 @@ setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geos
 library(RStoolbox)
 library(raster)
 library(ggplot2)
+library(rgdal)
 
 lsat <- brick("lsat.tif")
 
 
-## 1) Unsupervised L.C.Classification - First Possibility ####
+## 1) Unsupervised L.C.Classification - unsuperClass() ####
 uc <- unsuperClass(lsat, nClasses = 3)
 plot(uc$map)
 
@@ -24,35 +25,112 @@ ggR(uc$map, forceCat = TRUE, geom_raster = TRUE) +
                     name = "Classes\n")
 
 
-## 2) Unsupervised L.C.Classification - Second Possibility ####
-# run an unsupervised classification 2
-plotRGB(lsat, stretch = "lin")
-ext <- drawExtent()
-lsat_ext <- crop(lsat, ext) # kmeans only for small rasters --> cropping can be usefull
+## 2) Unsupervised L.C.Classification - kmeans() and correction for NAs ####
+plotRGB(lsat, stretch = "lin") # plot the original image
+lsat.kmeans <- kmeans(lsat[], 3) # read in as matrix (kmeans can´t read raster)
+kmeansraster <- raster(lsat) # re-create a raster from the result
+kmeansraster[] <- lsat.kmeans$cluster # fill up the empty raster with value
 
-lsat_ext.kmeans <- kmeans(lsat_ext[], 3) # read in as matrix (kmeans canÂ´t read raster)
-lsat.kmeans <- kmeans(lsat[], 3)
-kmeansraster <- raster(lsat_ext) # re-create a raster from the result
-kmeansraster.big <- raster(lsat)
-kmeansraster[] <- lsat_ext.kmeans$cluster # fill up the empty raster with values
-kmeansraster.big[] <- lsat.kmeans$cluster
+# dealing with missing values
+kmeansraster <- lsat[[1]] # create a copy file with same properties as lsat-raster...
+kmeansraster[] <- NA # ... and fill it with NAs
+values <- getValues(lsat) # extract values from raster layers and store as variable
+valid <- complete.cases(values) # create a mask-layer only with rows(?) without NAs
+lsat_kmeans <- kmeans(values[valid, ], # run the kmean clustering -->
+                      3, 
+                      iter.max=100, 
+                      nstart=3)
+kmeansraster[valid] <- lsat.kmeans$cluster
+
 
 plot(kmeansraster) # first possibility for plotting 
-plot(kmeansraster.big)
+plot(kmeansraster)
 
 
-cols <- c("1"="darkgreen", "2"="darkred", "3"="blue") # second possiblity for plotting
-ggR(kmeansraster.big, forceCat = TRUE, geom_raster = TRUE) + 
+cols <- c("1"="blue", "2"="darkred", "3"="darkgreen") # second possiblity for plotting
+ggR(kmeansraster, forceCat = TRUE, geom_raster = TRUE) + 
   ggtitle("Unsupervised classification 2") +
   scale_fill_manual(values = cols, 
-                    labels=c("Class1: Forest", "Class2: non-Forest", "Class3: Water"), 
+                    labels=c("Class1: Water", "Class2: non-Forest", "Class3: Forest"), 
                     name = "Classes\n")
 
   
 plotRGB(lsat, stretch = "lin") # third possibility for plotting
-plot(kmeansraster.big) # plot with pre-defined colours
-click(kmeansraster.big, n = 3)
+plot(kmeansraster) # plot with pre-defined colours
+click(kmeansraster, n = 3)
 arg <- list(at = seq(1,3,1), labels = c("forest", "water", "non-forest"))
 col <- c("darkgreen", "blue", "red")
+plot(kmeansraster, col = col, axis.arg = arg) 
 
-plot(kmeansraster.big, col = col, axis.arg = arg) 
+## 3) Supervised Landcover Classification - randomForest (model="rf) ####
+
+lsat <- brick("lsat.tif") # load the data
+p224r63 <- brick("crop_p224r63_all_bands.tif")
+
+# read in the training data
+td <- readOGR("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts",
+              "classification_1_data")
+# run the classification
+sc <- superClass(p224r63, 
+                 trainData=td, 
+                 responseCol="id", 
+                 trainPartition=0.7) # define the percentage of training-/validation data
+
+# plot the classification
+plot(sc$map)
+
+cols <- c("1"="blue", "2"="darkgreen", "3"="darkred")
+ggR(sc$map, forceCat = TRUE, geom_raster = TRUE) +
+  ggtitle("Supervised classification 1") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
+  scale_fill_manual(values = cols, 
+                    labels=c("Class1: Forest", "Class2: Water", "Class3: non-Forest"), 
+                    name = "Classes\n")
+
+writeRaster(sc$map, filename="sc_classification_1.tif") # safe the map to put it in QGIS for example.
+
+
+
+
+# same classification, but additionally with class "streets"
+td_2 <- readOGR("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts",
+              "classification_1_data_2")
+# run the classification
+sc_2 <- superClass(p224r63, trainData=td_2, responseCol="id")
+
+# plot the classification
+plot(sc_2$map)
+
+cols <- c("1"="blue", "2"="darkgreen", "3"="orange", "4"="darkred")
+ggR(sc_2$map, forceCat = TRUE, geom_raster = TRUE) +
+  ggtitle("Supervised classification 1") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
+  scale_fill_manual(values = cols, 
+                    labels=c("Class1: Water", "Class2: Forest", "Class3: non-Forest", "Class4: Streets"), 
+                    name = "Classes\n")
+
+
+## 4) supervised Classification - 
+
+# read in the image to classify
+p224r63 <- brick("crop_p224r63_all_bands.tif")
+
+# read in the training data
+td <- readOGR("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts",
+              "classification_1_data")
+# run the classification
+sc <- superClass(p224r63, trainData=td, responseCol="id", model=)
+
+# plot the classification
+plot(sc$map)
+
+cols <- c("1"="blue", "2"="darkgreen", "3"="darkred")
+ggR(sc$map, forceCat = TRUE, geom_raster = TRUE) +
+  ggtitle("Supervised classification 1") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
+  scale_fill_manual(values = cols, 
+                    labels=c("Class1: Forest", "Class2: Water", "Class3: non-Forest"), 
+                    name = "Classes\n")
+
+
+
