@@ -5,6 +5,7 @@
 setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts")
 
 library(ggplot2)
+# help.search("geom_", package="ggplot2") # get a list of available geometric objects
 
 ## 1) Plotting self created label ####
 
@@ -30,7 +31,7 @@ ggplot(mpg, aes(x = displ, y = cty)) + # set the variables for x and y axis
   geom_smooth() # adds a smoothed regression line
 
 
-## 3) ggboxplot - example 1 #####
+## 3) ggboxplot - example 1: mpg-dataset #####
 
 # example data set: mpg
 ggplot(mpg, aes(x = class, y = cty)) + # define x and y axis
@@ -40,7 +41,7 @@ ggplot(mpg, aes(x = class, y = cty)) + # define x and y axis
              position = position_jitter(width = 0.25, height = 0)) # loosen the points if several on same position
 # (!!! jitter can change meaning of plot! not too much!)
 
-## 4) ggboxplots - example 2 ####
+## 4) ggboxplots - example 2: self-created data ####
 
 # create the data set
 location <- rep(c("location_1", "location_2", "location_3"), each = 20)
@@ -120,7 +121,7 @@ coplot(value ~ treatment | location*plot_ID,
        col = "red", pch = 21, bg = "pink", 
        bar.bg = c(fac = "lightblue"))
 
-## 5) Scatterplots - example 1 ####
+## 5) Scatterplots - example 1: self-created data ####
 
 # create a data-frame with location_name, plot_ID and two measurements
 df <- data.frame(location = "location_name_1", measure1 = runif(100) * 1000, measure2 = round(runif(100) *100), 
@@ -179,6 +180,139 @@ ggplot(x)+
   labs(colour= "Plot-ID")
 
 
+
+
+
+
+## 6) ggplot - Steigerwald-dataset + Themes ####
+# preparation for the data-download from bitbucket
+install.packages("devtools")
+library(devtools)
+install_bitbucket("EAGLE_MSc/steigerwald", 
+                  build_vignette()) # normally within the brackets: ", build_vignettes=TRUE". BUT: download failed, if included...
+install.packages("steigerwald")
+library(steigerwald)
+
+data("bio_data") # load the dataset
+head(bio_data) # have a look at the data --> it´s a list with many different objects.
+
+forest <- data.frame(bio_data[1]) # extraxt one of the data sets
+
+# dot plot, beech basal area vs. ndvi
+ggplot(forest, aes(x=forest_short.beech, y=forest_short.ndvi)) + #define the data
+  geom_point() + # command to create points
+  facet_wrap(~ forest_short.sub_basin) + # create sub-classes
+  geom_smooth() # add a smoothed line
+
+# boxplot with point "jitter"
+ggplot(forest, aes(forest_short.sub_basin, forest_short.ndvi)) + #define dataset
+  geom_boxplot(alpha=0.5) + #command for boxplot
+  geom_point(aes(color=forest_short.height), #colors shell depend on "height"
+             alpha=0.6, # transparency of points
+             size=1.5, # size of points
+             position=position_jitter(width=0.25, height=0)) #size of jitter-effect/straightening out the points
+
+# compare: same info, but less informative
+ggplot()+
+  geom_point(data=forest, aes(forest_short.sub_basin, forest_short.ndvi))
+
+# same, but without color
+ggplot()+
+  geom_point(data=forest, aes(forest_short.sub_basin, forest_short.ndvi, color=forest_short.height))
+
+## some other plots:
+ggplot(forest, aes(x=forest_short.beech, y=forest_short.ndvi))+
+  geom_jitter()
+
+ggplot(forest, aes(x=forest_short.beech, y=forest_short.ndvi))+
+  geom_boxplot()
+
+ggplot(forest, aes(x=forest_short.beech, y=forest_short.ndvi)) +
+  geom_violin() +
+  geom_jitter(aes(alpha=0.7, size=2), color="blue") 
+
+
+
+# "store" the plot and add new shemes
+a <- ggplot() +
+  geom_point(data=forest, aes(forest_short.sub_basin, forest_short.ndvi, color=forest_short.height))
+
+a # call plot with global settings
+
+a + theme_bw() # plot with new color sheme
+
+a + theme_grey() # back to default-setting (for this single plot)
+
+theme_set(theme_grey) # set this theme globally for all plots
+
+theme_get() # get the current theme --> attributes can be modified!!!
+theme_update() # the current theme is automatically applied to each new plot
+
+
+
+## 7) ggplot for Spatial Data - example: Würzburg-Map ####
+library(ggmap)
+library(mapproj)
+map.wue <- get_map("Wurzburg") # load data of Wurzburg
+ggmap(map.wue) # plot the map
+ggmap(map.wue, zoom=15)
+
+map <- get_map("Bavaria", zoom=6) # load and plot an overview of Bavaria
+ggmap(map)
+
+
+## 8) ggplot for Spatial Data - example: lsat$B3_dn ####
+library(RStoolbox)
+data(lsat) # load example data
+
+lsat.df <- data.frame(coordinates(lsat), getValues(lsat)) # create data.frame from coordinates and raster-values
+lsat.df <- lsat.df[lsat.df$B1_dn!=0, ] # remove background if needed
+
+ggplot(lsat.df) +
+  geom_raster(aes(x=x, y=y, fill=B3_dn)) +
+  scale_fill_gradient(na.value=NA) +
+  coord_equal()
+
+# add another color sheme
+ggplot(lsat.df) +
+  geom_raster(aes(x=x, y=y, fill=B3_dn)) +
+  scale_fill_gradient(low="black", high="white", na.value=NA) +
+  coord_equal()
+
+
+
+##### plot the lsat raster data and add a vector data layer
+# same plot as before, but "stored"
+a <- ggplot(lsat.df) +
+  geom_raster(aes(x=x, y=y, fill=B3_dn)) +
+  scale_fill_gradient(low="black", high="white", na.value=NA) +
+  coord_equal()
+
+# load a spatial vector file form RStoolbox package
+poly <- readRDS(system.file("external/trainingPolygons.rds", package="RStoolbox"))
+
+# extract and store the coordinates of the vector data
+plots <-  as.data.frame(coordinates(poly))
+
+names(plots) # check aes of plots for plotting
+a + guides(fill=guide_colorbar()) +
+  geom_point(data=plots, aes(x=V1, y=V2), shape=3, colour="yellow") +
+  theme(axis.title.x=element_blank())
+
+
+
+##### limit the plotting to extent of lsat to extent of poly
+lim <- extent(lsat)
+a + guides(fill=guide_colorbar()) +
+  geom_point(data=plots, aes(x=V1, y=V2), shape=3, colour="yellow") +
+  theme(axis.title.x=element_blank()) +
+  scale_x_continuous(limits=c(lim@xmin, lim@xmax)) +
+  ylim(c(lim@ymin, lim@ymax))
+
+
+
+## 9) Defining an own Theme for plotting ####
+# --> see day5_main.pdf/slide 81 and develope own theme!!!
 
 
 
