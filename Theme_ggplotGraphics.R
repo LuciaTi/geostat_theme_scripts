@@ -5,6 +5,9 @@
 setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts")
 
 library(ggplot2)
+library(ggmap)
+library(mapproj)
+library(ggalt)
 # help.search("geom_", package="ggplot2") # get a list of available geometric objects
 
 ## 1) Plotting self created label ####
@@ -251,14 +254,44 @@ theme_update() # the current theme is automatically applied to each new plot
 
 
 ## 7) ggplot for Spatial Data - example: Würzburg-Map ####
-library(ggmap)
-library(mapproj)
+
+# used libraries: ggplot2, ggmap, mapproj, ggalt
+
+############ plotting Würzburg
 map.wue <- get_map("Wurzburg") # load data of Wurzburg
 ggmap(map.wue) # plot the map
 ggmap(map.wue, zoom=15)
 
 map <- get_map("Bavaria", zoom=6) # load and plot an overview of Bavaria
 ggmap(map)
+
+
+############ encircle Würzburg and mark singel neighbourhoods
+wue <- geocode("Wurzburg") # load the central coordinates of Würzburg
+wue_ggl_hybrid_map <- qmap("wue",  # get the Google Hybrid map --> check alternatves (Satellit, roads, openStreetMap)!!
+                           zoom=12, 
+                           source="google", 
+                           maptype="hybrid")
+
+wue_places <- c("Zellerau", # define names of neighbourhoods in Würzburg
+                "Sanderau", 
+                "Gerbrunn", 
+                "Estenfeld")
+
+places_loc <- geocode(wue_places) # load center coordinates of neighbourhoods
+
+# plot the map as before, but with dots on neighbourhoods and a circle around them
+wue_ggl_hybrid_map +
+  geom_point(aes(x=lon, y=lat),
+             data=places_loc, 
+             alpha=0.7, 
+             size=7, 
+             color="tomato") +
+  geom_encircle(aes(x=lon, y=lat), 
+                data=places_loc, 
+                size=2, 
+                color="blue")
+
 
 
 ## 8) ggplot for Spatial Data - example: lsat$B3_dn ####
