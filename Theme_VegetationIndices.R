@@ -6,9 +6,9 @@ setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geos
 library(raster)
 library(RStoolbox)
 
-## 1) 3 Possibilities to calculate the NDVI "by hand" ####
-
 lsat <- brick("lsat.tif")
+
+## 1) 3 Possibilities to calculate the NDVI "by hand" ####
 
 # 1- type it by hand
 lsat_ndvi <- (lsat$lsat.4 - lsat$lsat.3)/(lsat$lsat.4 + lsat$lsat.3)
@@ -39,7 +39,14 @@ plot(lsat_slavi, main="msavi")
 ## 3) Calculate the standard deviation between several VIs ####
 vi_stack <- stack(lsat_DVI, lsat_ndvi, lsat_MSAVI) # produce a stack with the Vis to compare
 lsat_VI_sd <- calc(vi_stack, fun = sd) # calculate the sd
-plot(lsat_VI_sd) # plot the sd
 
+# plot the standard deviation
+plot <- ggR(lsat_VI_sd, geom_raster=TRUE) +
+  ggtitle("Comparison of DVI, NDVI and MSAVI") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
+  scale_fill_gradient2(low="darkgreen", mid="yellow", high="red", 
+                       midpoint=30,
+                       name="Standard\nDeviation\n")
+plot
 
 
