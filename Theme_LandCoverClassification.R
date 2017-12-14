@@ -8,8 +8,10 @@ library(RStoolbox)
 library(raster)
 library(ggplot2)
 library(rgdal)
+library(wrspathrow)
 
 lsat <- brick("lsat.tif")
+p224r63 <- brick("crop_p224r63_all_bands.tif")
 
 
 ## 1) Unsupervised L.C.Classification - unsuperClass() ####
@@ -25,7 +27,7 @@ ggR(uc$map, forceCat = TRUE, geom_raster = TRUE) +
                     name = "Classes\n")
 
 
-## 2) Unsupervised L.C.Classification - kmeans() and correction for NAs ####
+## 2A) Unsupervised L.C.Classification - kmeans() and correction for NAs ####
 plotRGB(lsat, stretch = "lin") # plot the original image
 lsat.kmeans <- kmeans(lsat[], 3) # read in as matrix (kmeans can´t read raster)
 kmeansraster <- raster(lsat) # re-create a raster from the result
@@ -60,7 +62,41 @@ plot(kmeansraster) # plot with pre-defined colours
 click(kmeansraster, n = 3)
 arg <- list(at = seq(1,3,1), labels = c("forest", "water", "non-forest"))
 col <- c("darkgreen", "blue", "red")
-plot(kmeansraster, col = col, axis.arg = arg) 
+plot(kmeansraster, col = col, axis.arg = arg)
+
+
+
+## 2B) Unsupervised Classification - kmeans() with included ndvi ####
+
+p224r63.ndvi <- spectralIndices(p224r63, red=3, nir=4, index="ndvi") # calculate the ndvi
+p224r63.ndvi_stack <- stack(p224r63, p224r63.ndvi) # stack image an ndvi together
+p224r63_uc.ndvi <- unsuperClass(p224r63.ndvi_stack, nClasses=3) # calculate the classification from stack
+p224r63_uc <- unsuperClass(p224r63, nClasses=3) # calculate the Classification without ndvi for comparison
+plot(p224r63_uc$map)
+
+
+cols1 <- c("1"="blue", "2"="darkgreen", "3"="darkred")
+plot1 <- ggR(p224r63_uc$map, forceCat = TRUE, geom_raster = TRUE) +
+  ggtitle("Unsupervised classification - without NDVI") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
+  scale_fill_manual(values = cols1, 
+                    labels=c("Class1: Forest", "Class2: Water", "Class3: non-Forest"), 
+                    name = "Classes\n")
+plot1
+
+cols2 <- c("1"="darkgreen", "2"="darkred", "3"="blue")
+plot2 <- ggR(p224r63_uc.ndvi$map, forceCat = TRUE, geom_raster = TRUE) +
+  ggtitle("Unsupervised classification - with NDVI") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
+  scale_fill_manual(values = cols2, 
+                    labels=c("Class1: Forest", "Class2: non-Forest", "Class3: Water"), 
+                    name = "Classes\n")
+plot2
+
+# multiplot(plot1, plot2, col=1)
+# multiplot-function from: http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/
+
+
 
 ## 3) Supervised Landcover Classification - randomForest (model="rf) ####
 
