@@ -9,6 +9,7 @@ library(raster)
 library(ggplot2)
 library(rgdal)
 library(wrspathrow)
+library(randomForest)
 
 lsat <- brick("raster/lsat.tif")
 p224r63 <- brick("raster/crop_p224r63_all_bands.tif")
@@ -165,11 +166,12 @@ for (i in 1:length(model_names)){ # for the whole vector of models (model[1] to 
   sc_3 <- superClass(p224r63, 
                    trainData=td, 
                    responseCol = "id",
+                   trainPartition=0.7,
                    model=model_names[i]) # ... run the classification like so and use model[i]]
   
   names(sc_3$map) <- model_names[i] # directly rename the name of the layers (new name == name of used model)
   
-  # plot each classifcation
+  # plot each classifcation automatically within the loop
   p <- ggR(sc_3$map, forceCat = TRUE, geom_raster = TRUE) +
     ggtitle(paste("Supervised classification - model:", model_names[i])) +
     theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
@@ -178,30 +180,90 @@ for (i in 1:length(model_names)){ # for the whole vector of models (model[1] to 
                       name = "Classes\n")
   print(p)
   
-  if (i==1){                     # in the first run: safe the sc-result as sc_stack
+  if (i==1){                              # in the first run: safe the sc-result as sc_stack
             sc_3_stack <- sc_3$map
            } else{                        # later on: stack the actual sc-result with sc_stack 
                   sc_3_stack <- stack(sc_3_stack, sc_3$map)
-                 }
+           }
+  
 }
 
+# calculate the Entropy of different classification models
+modelEntropy <- rasterEntropy(sc_3_stack)
 
-# plot the classification
-
-cols <- c("1"="blue", "2"="darkgreen", "3"="darkred")
-ggR(sc_3$map["pls"], forceCat = TRUE, geom_raster = TRUE) +
-  ggtitle("Supervised classification - model pls") +
+# plot also the entropy of different classification models
+pp <- ggR(modelEntropy, geom_raster=TRUE) +
+  ggtitle("Entropy of Classification") +
   theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
-  scale_fill_manual(values = cols, 
-                    labels=c("Class1: Forest", "Class2: Water", "Class3: non-Forest"), 
-                    name = "Classes\n")
-
-ggR(test, forceCat = TRUE, geom_raster = TRUE) +
-  ggtitle(paste("Supervised classification - model:", model_names[3])) +
-  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
-  scale_fill_manual(values = cols, 
-                    labels=c("Class1: Water", "Class2: Forest", "Class3: non-Forest"), 
-                    name = "Classes\n")
+  scale_fill_gradientn(colours=rev(rainbow(4)), 
+                       name="Entropy\n")
+print(pp)
 
 
 
+writeRaster(sc_3_stack, filename="results/sc_p224r63_3.tif") # safe the result
+
+
+## 5 Supervised Classification with full code ####
+
+########## 1. define all the attributes and objects needed for the classifcation
+
+# define training data (vector data)
+vec <- readOGR("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts/vector",
+                  "classification_1_data")
+
+# define the image to classify
+satImage <- brick("raster/crop_p224r63_all_bands.tif")
+
+# define number of samples to take per landcover class
+numsamps <- 100
+
+# define the name of attribute which holds the land cover type
+attName <- "id"
+
+# define a vector with unique attribute names to differentiate the classes
+uniqueAtt <- unique(vec[[attName]])
+
+# define output file-name and path
+outImage <- ("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts/results/sc_p224r63_4.tif")
+
+
+##########  2. Loop through each class assignong random coordinate points (over all polygons of this class)
+
+for(x in 1:length(uniqueAtt)) { # loop through as often as there are unique classes
+  class_data <- vec[vec[[attName]]==uniqueAtt[x], ] # take data from polygons of class with id = x
+  classpts <- spsample(class_data, type="random", n=numsamps) # sample 100 random sample from all polygons of defined class
+  
+  if(x==1){
+    xy <- classpts # first run: create the objects xy with the sampled coordinates
+    xy.data <- rep(uniqueAtt[x], numsamps) # for plotting the points: produce also a data frame with class names (one entry per sampled coordinate, same loop structure)
+    
+  } else {
+      xy <- rbind(xy, classpts) # later on: rbind the new coordinates to existing object
+      xy.data <- c(xy.data, (rep(uniqueAtt[x], numsamps))) 
+      }
+
+}
+
+# write the SpatialPointsDataFrame to plot the coordinates
+xy.data <- data.frame(xy.data) # transform object to data.frame
+xy.points <- xy # produce a dublicate of the coordinates
+xy.spdf <- SpatialPointsDataFrame(xy.points, xy.data)
+xy.df <- data.frame(xy.spdf)
+xy.df$xy.data <- as.factor(xy.df$xy.data)
+
+# --> xy.spdf is SpatialPointsDataFrame object
+# --> plot SatelliteImage with sampled coordinate points
+
+ggRGB(p224r63, stretch="lin", geom_raster=TRUE) +
+  ggtitle("Satellite Image with randomly selected coordinates\n(p224r63)") +
+  theme(plot.title=element_text(size=12, colour="black", face="bold"), 
+        legend.title=element_text(size=10, colour = "black", face="bold")) +
+  geom_point(data=xy.df,
+             aes(x=xy.df$x,y=xy.df$y, col=xy.df$xy.data),
+             shape=3) +
+  scale_colour_manual(name="Polygon\nClasses\n",  
+                      values = c("1"="yellow", "2"="orange", "3"="red"))
+
+
+########## 3. 
