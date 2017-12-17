@@ -229,6 +229,11 @@ outImage <- ("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skrip
 
 
 ##########  2. Loop through each class assignong random coordinate points (over all polygons of this class)
+##########     (Also: Check first if Raster and Vector Layer have same projection)
+
+
+if (projection(satImage) == projection(vec)) # Check, if projections of raster and vector are equal
+{
 
 for(x in 1:length(uniqueAtt)) { # loop through as often as there are unique classes
   class_data <- vec[vec[[attName]]==uniqueAtt[x], ] # take data from polygons of class with id = x
@@ -242,8 +247,12 @@ for(x in 1:length(uniqueAtt)) { # loop through as often as there are unique clas
       xy <- rbind(xy, classpts) # later on: rbind the new coordinates to existing object
       xy.data <- c(xy.data, (rep(uniqueAtt[x], numsamps))) 
       }
-
 }
+} else {
+  print("Stop!!! Projections need to be adopted!")
+       }
+
+  
 
 # write the SpatialPointsDataFrame to plot the coordinates
 xy.data <- data.frame(xy.data) # transform object to data.frame
@@ -266,4 +275,62 @@ ggRGB(p224r63, stretch="lin", geom_raster=TRUE) +
                       values = c("1"="yellow", "2"="orange", "3"="red"))
 
 
-########## 3. 
+# safe a plot of points directly as PDF
+pdf("results/training_points.pdf")
+image(p224r63, 4)
+points(xy)
+dev.off()
+
+
+########## 3. Extract reference and pixel values for training data
+
+# overlay data-layer with random points
+temp <- over(x=xy, y=vec) # x: location of the queries/points, y: layer from which values shell be taken
+response <- factor(temp[[attName]]) # encode the attName column as factor
+
+# extract the real values from SatelliteImage at the xy-locations and 
+# cbind them with the classname of this place
+trainvals <- cbind(response, extract(satImage, xy))
+
+
+########## 4. Calculate the actual Classification Model
+
+# just for Fun:
+print("Starting to calculate random forest object")
+
+# caluclate the model
+randfor <- randomForest(as.factor(response) ~. , 
+                        data=trainvals, 
+                        na.action=na.omit, 
+                        confusion=TRUE)
+
+
+########## 5. Apply fitted model to the full Raster Image + Check if Raster and Vector have same Projection
+
+# again for fun
+print("Starting predictions")
+
+# predict the Classification for the Full image
+sc_p224r63_4 <- predict(satImage, # the original Raster data from which to predict
+                        randfor, # Model to use for prediction
+                        filenname="results/sc_p224r63_4.tif", # optional output filename for safing
+                        progress='text', # how to show the progress of prediction
+                        format='GTIFF', # output file type
+                        datatype='INT1U', # ouout data type
+                        type='response', 
+                        overwrite=TRUE)
+
+# sage the result if necessary
+writeRaster(sc_p224r63_4, filename="results/sc_p224r63_4.tiff")
+
+
+
+## plot the classification
+p <- ggR(sc_p224r63_4, forceCat = TRUE, geom_raster = TRUE) +
+  ggtitle(paste("Supervised classification - done manually step by step")) +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
+  scale_fill_manual(values = cols, 
+                    labels=c("Class1: Water", "Class2: Forest", "Class3: non-Forest"), 
+                    name = "Classes\n")
+print(p)
+
