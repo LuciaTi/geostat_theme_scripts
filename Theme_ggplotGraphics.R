@@ -8,6 +8,7 @@ library(ggplot2)
 library(ggmap)
 library(mapproj)
 library(ggalt)
+library(gganimate)
 # help.search("geom_", package="ggplot2") # get a list of available geometric objects
 
 ## 1) Plotting self created label ####
@@ -346,6 +347,39 @@ a + guides(fill=guide_colorbar()) +
 
 ## 9) Defining an own Theme for plotting ####
 # --> see day5_main.pdf/slide 81 and develope own theme!!!
+
+## 10) gganimate with gabminder - Animated ggplot graphics ####
+
+# install package using devtools:
+devtools::install_github("dgrtwo/gganimate")
+
+# install gapminder for example data and set the theme
+library(gapminder)
+theme_set(theme_bw())
+
+# install also imagemagick (visualization programm)
+# see: https://www.rdocumentation.org/packages/installr/versions/0.19.0/topics/install.ImageMagick
+# ! click the checkbox in the DLL installer that is for "legacy" support that will install "convert".
+library(installr)
+install.imagemagick("https://www.imagemagick.org/script/download.php")
+
+# point R path to the folder of ImageMagick executables
+animation::ani.options(convert="C:/PROGRA~1/ImageMagick-7.0.7-Q16/convert.exe")
+
+
+# write the plot
+p <- ggplot(gapminder, 
+            aes(gdpPercap, lifeExp, size=pop, color=continent, frame=year)) + # aes(frame) defines which variable is used for the animation
+  geom_point() +
+  scale_x_log10()
+
+# call the animated plot
+gganimate(p)
+
+# call and save the animated plot as GIF-file
+gganimate(p, "example_gapminder_1.gif")
+
+
 
 
 
