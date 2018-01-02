@@ -7,6 +7,10 @@ library(reshape2)
 library(ggplot2)
 library(fortunes)
 library(cowsay)
+library(fun)
+library(sudoku)
+library(BRRR)
+
 
 
 ## 1) Analysis of Appearance Time of Students ####
@@ -124,3 +128,49 @@ someone_say_my_fortune <- function(x){
   say(paste(fortune(), collapse="\n"), by=animal)
 }
 someone_say_my_fortune()
+
+
+## 4) Library fun - Playing Games - chess, sudoku, etc. ####
+
+# choose which type of window shell be opened for playing the game (depending on system)
+if(.Platform$OS.type =="windows") x11() else x11(type="Xlib")
+mine_sweeper()
+
+
+## 5) Library Sudoku- Sudoku ####
+if(.Platform$OS.type =="windows") x11() else x11(type="Xlib")
+playSudoku()
+
+
+## 6) package BRRR - making sounds ####
+
+# install package devtools if it´s not already loaded
+if(!require(devtools)) {install.packages(devtools)}
+
+# download package BRRR from github
+devtools::install_github("brooke-watson/BRRR")
+
+# try some noises
+skrrrahh("drummaboy")
+skrrrahh("snoop")
+skrrrahh(41)
+skrrrahh(expr = "yes!")
+
+# check if code works or get sound feedback
+x <- 11
+if (sqrt(x) == sqrt(10)){
+  skrrrahh("snoop")
+} else {
+  skrrrahh(41)
+}
+
+## check details on: https://github.com/brooke-watson/BRRR
+
+
+
+## 5) Drawing a Christmas Tree #####
+cat(c("\u4D\u65\u72\u72\u79\u20\u43\u68\u72\u69\u73\u74\u6D\u61\u73\u0A\u74\u6F\u20\u61\u6c\u6c\u20\u45\u41\u47\u4C\u45\u20\u73\u74\u75\u64\u65\u6E\u74\u73\u21\u0A\u0A",unlist(lapply(c(1:17*2-1,rep(3,6)),function(x)
+cat(rep("\u20",(37-x)/2),".",rep("\u23", x), ".\n", sep="")))))
+
+
+
