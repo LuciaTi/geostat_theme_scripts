@@ -5,8 +5,11 @@
 setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts")
 library(raster)
 library(RStoolbox)
+library(ggplot2)
 
-lsat <- brick("lsat.tif")
+lsat <- brick("raster/lsat.tif")
+p224r63 <- brick("raster/p224r63.tif")
+p224r63m_ndvi <- raster("results/p224r63_2011m_ndvi.tif")
 
 ## 1) 3 Possibilities to calculate the NDVI "by hand" ####
 
@@ -48,5 +51,66 @@ plot <- ggR(lsat_VI_sd, geom_raster=TRUE) +
                        midpoint=30,
                        name="Standard\nDeviation\n")
 plot
+
+
+
+## 4) Comparison via Moving Window Approach (with raster::focal()) ####
+
+# calculate and plot the NDVI if not calculated before
+#p224r63_ndvi <- spectralIndices(p224r63, red = "p224r63.3", nir = "p224r63.4", indices = "NDVI")
+#ggR(p224r63_ndvi, geom_raster=TRUE) +
+#  ggtitle("NDVI (p224r63-image") +
+#  theme(plot.title = element_text(size = 12, colour = "black", face="bold"), 
+#        legend.title=element_text(size=12, colour="black", face="bold")) +
+#  scale_fill_gradient(low="white", high="darkgreen",
+#                       name="Values\n")
+
+
+
+
+
+########## 1. Window with 3x3 cells
+
+# define the matrix for the moving window
+window <- matrix(1, nrow=3, ncol=3) # all pixels around center shell contribute equally --> set all matrix-values to 1
+
+
+# calculate and plot the variance within the window (per center pixel while moving)
+p224r63m_ndvi_3x3_var <- focal(p224r63m_ndvi, w=window, fun=var)
+ggR(p224r63m_ndvi_3x3_var, geom_raster=TRUE) +
+  ggtitle("NDVI-variation (p224r63m-image") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold"), 
+        legend.title=element_text(size=12, colour="black", face="bold"), 
+        plot.background = element_rect(fill="white")) +
+  scale_fill_gradientn(colours=rev(rainbow(4)),
+                       na.value="white",
+                         name="Variation\n")
+
+
+
+########## 2. Compare windows of different sizes
+
+# calculate the sd over windows of different sizes
+focals <- lapply(c(3, 7, 11, 15), function(winDim){ # lapply applys the same FUN argument to all elements, returns result as a list
+  
+                                                   # define the FUN argument
+                                                   window <- matrix(data = 1, ncol=winDim, nrow=winDim) # define windwo size
+                                                   focal(p224r63m_ndvi, w=window, fun=sd) # apply the moving window
+                                                   
+                                                   })
+focal_sd_winSizes <- stack(focals)
+names(focal_sd_winSizes) <- c("w3x3", "w7x7", "w11x11", "w15x15")
+
+#(!!! Plot is not working yet!)
+ggR(focal_sd_winSizes, geom_raster=TRUE) +
+  ggtitle("NDVI-variation ~ window size (p224r63m-image") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold"), 
+        legend.title=element_text(size=12, colour="black", face="bold")) +
+  facet_wrap(~ names(focal_sd_winSizes)) +
+  scale_fill_gradientn(colours=rev(rainbow(4)),
+                       na.value="white",
+                       name="Variation\n")
+
+
 
 
