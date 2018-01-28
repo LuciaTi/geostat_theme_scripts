@@ -101,7 +101,7 @@ plot2
 
 ## 3A) Supervised Landcover Classification - randomForest (model="rf) ####
 
-lsat <- brick("raster/lsat.tif") # load the data
+# lsat <- brick("raster/lsat.tif") # this one not used here ...
 p224r63 <- brick("raster/crop_p224r63_all_bands.tif")
 
 # read in the training data
@@ -157,9 +157,7 @@ writeRaster(sc_2$map, filename="results/sc_p224r63_2.tif") # safe the map
 td <- readOGR("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts/vector",
               "classification_1_data")
 
-# run the classification
-#sc <- superClass(p224r63, trainData=td, responseCol="id", model=)
-
+cols <- c("1"="blue", "2"="darkgreen", "3"="orange", "4"="darkred")
 model_names <- c("rf", "svmRadial", "pls") # define witch models shell be used
 
 for (i in 1:length(model_names)){ # for the whole vector of models (model[1] to last model) ...
@@ -204,7 +202,7 @@ print(pp)
 writeRaster(sc_3_stack, filename="results/sc_p224r63_3.tif") # safe the result
 
 
-## 5 Supervised Classification with full code ####
+## 5) Supervised Classification with full code ####
 
 ########## 1. define all the attributes and objects needed for the classifcation
 
@@ -236,7 +234,7 @@ if (projection(satImage) == projection(vec)) # Check, if projections of raster a
 {
 
 for(x in 1:length(uniqueAtt)) { # loop through as often as there are unique classes
-  class_data <- vec[vec[[attName]]==uniqueAtt[x], ] # take data from polygons of class with id = x
+  class_data <- vec[vec[[attName]]==uniqueAtt[x], ] # all polygons of class with id = x are chosen and stored as class_data
   classpts <- spsample(class_data, type="random", n=numsamps) # sample 100 random sample from all polygons of defined class
   
   if(x==1){
@@ -299,7 +297,7 @@ trainvals <- cbind(response, extract(satImage, xy))
 print("Starting to calculate random forest object")
 
 # caluclate the model
-randfor <- randomForest(as.factor(response) ~. , 
+randfor <- randomForest(as.factor(response) ~. , # ~: against. .: all covariats
                         data=trainvals, 
                         na.action=na.omit, 
                         confusion=TRUE)
@@ -321,7 +319,7 @@ sc_p224r63_4 <- predict(satImage, # the original Raster data from which to predi
                         overwrite=TRUE)
 
 # sage the result if necessary
-writeRaster(sc_p224r63_4, filename="results/sc_p224r63_4.tiff")
+writeRaster(sc_p224r63_4, filename="results/sc_p224r63_5.tiff")
 
 
 
@@ -333,4 +331,48 @@ p <- ggR(sc_p224r63_4, forceCat = TRUE, geom_raster = TRUE) +
                     labels=c("Class1: Water", "Class2: Forest", "Class3: non-Forest"), 
                     name = "Classes\n")
 print(p)
+
+
+## 6) Accuracy of Supervised Classification ####
+
+################# 1. Re-do the Classifcation as before:
+p224r63 <- brick("raster/crop_p224r63_all_bands.tif")
+
+# read in the training data
+td <- readOGR("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts/vector",
+              "classification_1_data")
+vd <- readOGR("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts/vector",
+              "classification_1_Pawel")
+
+# run the classification
+sc_4 <- superClass(p224r63, 
+                 trainData=td, 
+                 responseCol="id", 
+                 valData = vd) # insert validation data
+
+# plot the classification
+plot(sc_4$map)
+
+cols <- c("1"="blue", "2"="darkgreen", "3"="darkred")
+ggR(sc_4$map, forceCat = TRUE, geom_raster = TRUE) +
+  ggtitle("Supervised classification 1") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold")) +
+  scale_fill_manual(values = cols, 
+                    labels=c("Class1: Forest", "Class2: Water", "Class3: non-Forest"), 
+                    name = "Classes\n")
+
+writeRaster(sc_4$map, filename="results/sc_p224r63_6.tif") # safe the map to put it in QGIS for example.
+
+
+
+
+################ 2. Check the Accuracy
+
+sc_4$validation$performance
+
+validation_sc_4 <- validateMap(map=sc_4$map, valData=vd, responseCol="id", nSamples=500, mode="classification")
+validation_sc_4
+
+
+
 
