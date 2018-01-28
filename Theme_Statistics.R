@@ -3,7 +3,12 @@
 ######################
 
 setwd("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/geostat_theme_scripts")
-
+library(raster)
+library(RStoolbox)
+library(ggplot2)
+library(car)
+library(corrplot)
+library(usdm)
 
 
 
@@ -85,7 +90,7 @@ library(ellipse)
 plotcorr(cm_lsat, col=ifelse(abs(cm_lsat) > 0.7, "red", "grey"))
 # the larger the circles, the higher is the correlation
 
-## --> can be used, if non-correlated datasets are needed --> check for example, which layers don´t correlate for later use in analysis
+## --> can be used, if non-correlated datasets are needed --> check for example, which layers don?t correlate for later use in analysis
 
 
 
@@ -132,11 +137,14 @@ cor.test(stork$No.storks, stork$No.babies)
 a <- c(5,2,6,59,84,55,6,99,55,77,2,3,5,6,8,15,11,12,46,85,40, 1, 1, 1, 1, 60,60,60,60,60)
 b <- c(1:length(a))
 
+# variance = mittlerer quadratischer Abstand zum Mittelwert
+# standard deviation = sqrt(variance)
+# standard fehler = standard deviation/sqrt(sampling size)
 
-mean(a) # --> BUT: no information about how well the mean represents the data!!
-median(x)
-var(x)
-sd(x) # == sqrt(var)
+mean(a) # average of numbers --> BUT: no information about how well the mean represents the data!!
+median(a) # middle number
+var(a)
+sd(a) # == sqrt(var)
 
 plot(b,a)
 lines(x=c(0, length(b)+1), y=c(mean(a), mean(a)), col="red")
@@ -144,7 +152,25 @@ lines(x=c(0, length(b)+1), y=c(mean(a), mean(a)), col="red")
 
 
 
-## 7) Shapiro test for normal distribution ####
+## 8) Spatial correlation with corLocal() ####
+# load image and calculate ndvi and  evi
+p224r63 <- brick("raster/p224r63.tif")
+p224r63_ndvi <- spectralIndices(p224r63, red = "p224r63.3", nir = "p224r63.4", indices = "NDVI")
+p224r63_evi <- spectralIndices(p224r63, red="p224r63.3", blue = "p224r63.1", nir = "p224r63.4", indices = "EVI")
+
+p224r63_ndvi_evi <- corLocal(p224r63_ndvi, p224r63_evi, ngb=11)
+
+plot(p224r63_ndvi_evi)
+
+ggR(p224r63_ndvi_evi, geom_raster=TRUE) +
+  ggtitle("Spatial Correlation NDVI and EVI (p224r63-image") +
+  theme(plot.title = element_text(size = 12, colour = "black", face="bold"), 
+        legend.title=element_text(size=12, colour="black", face="bold")) +
+  scale_fill_gradientn(colors=terrain.colors(100),
+                       na.value="white",
+                       name="Correlation\n")
+
+## 9) Shapiro test  (normal distribution) and Levene Test (equallity of variance) ####
 
 # create data: normal and non-normal distributed
 set.seed(120)
@@ -167,15 +193,59 @@ qqnorm(d2);qqline(d2, col=2)
 ## nice to understand test: create data with certain distribution, and test this data to see result of test
 
 
-## 8) levenTest() for Homostacity ####
+# test for equally distributed data
+D <- data.frame(GroupID=as.factor(c(rep(1, length(d1)), rep(2, length(d2)))),
+                data=c(d1, d2))
 
-## 9) Colinearity and mulitcolinearity ####
+leveneTest(data ~ GroupID, data=D)
 
+
+## 10) Colinearity and mulitcolinearity - corrplot caret and vif(?!!!!)####
+
+########## 1. library corrplot
+
+# create data which correlate
 a <- runif(200)
 b <- a * runif(200)
-c <- data.frame(cbind(a, b))
-colnames(c) <- cbind("a", "b")
+c <- a*b
+d <- runif(200) * 2
+data <- data.frame(cbind(a, b, c, d))
+colnames(data) <- cbind("a", "b", "c", "d")
 
-library(corrplot)
-corrplot::corrplot(cor(c), type="lower")
-corrplot::corrplot(cor(c, method="number"))## ??!
+# plot correlation per pair in circles
+corrplot::corrplot(cor(data), type="lower")
+
+# plot correlations per pair in numbers
+corrplot::corrplot(cor(data), method="number")
+
+
+
+
+
+########## 2. library caret
+
+# create correlation data
+R1 <- structure(c(1, 0.86, 0.56, 0.32, 0.85, 0.86, 1, 0.01, 0.74, 0.32, 
+                  0.56, 0.01, 1, 0.65, 0.91, 0.32, 0.74, 0.65, 1, 0.36,
+                  0.85, 0.32, 0.91, 0.36, 1), 
+                .Dim = c(5L, 5L))
+colnames(R1) <- rownames(R1) <- paste0("x", 1:ncol(R1))
+
+caret::findCorrelation(cor(R1), cutoff=0.5, names=TRUE, verbose=TRUE)
+
+
+
+
+
+
+########## 3. library usdm
+lsat <- brick("raster/lsat.tif")
+vif(lsat)
+
+
+
+
+
+
+## 11) 
+
