@@ -383,3 +383,119 @@ gganimate(p, "example_gapminder_1.gif")
 
 
 
+
+## 11) Plotting probability -  ####
+
+# load the libraries needed
+library(tidyverse)
+library(ggjoy)
+library(scales)
+
+# load the data
+probly <- read.csv("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/perceptions-master/probly.csv", stringsAsFactors=FALSE)
+numberly <- read.csv("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/perceptions-master/numberly.csv", stringsAsFactors=FALSE)
+
+
+#Melt data into column format.
+# --> the values are in columns per variable and will bee restructured in one column 
+## with variable names and a second column with all the single values after the corresponding variable name.
+numberly <- gather(numberly, # choose the data
+                   "variable", # the "key": reorder table per giben variable
+                   "value", # the "value": which values are to add for each variable
+                   1:10) # use columns 1:10
+numberly$variable <- gsub("[.]"," ",numberly$variable) # adopt the name, replace "." with " " in column numberly$variable
+
+probly <- gather(probly, "variable", "value", 1:17) # same for the second table
+probly$variable <- gsub("[.]"," ",probly$variable)
+probly$value<-probly$value/100 # convert to %
+
+#Order in the court!
+probly$variable <- factor(probly$variable, # define the vairiable-column as factor (befor: character)
+                          c("Chances Are Slight",
+                            "Highly Unlikely",
+                            "Almost No Chance",
+                            "Little Chance",
+                            "Probably Not",
+                            "Unlikely",
+                            "Improbable",
+                            "We Doubt",
+                            "About Even",
+                            "Better Than Even",
+                            "Probably",
+                            "We Believe",
+                            "Likely",
+                            "Probable",
+                            "Very Good Chance",
+                            "Highly Likely",
+                            "Almost Certainly"))
+numberly$variable <- factor(numberly$variable, 
+                            c("Hundreds of",
+                              "Scores of",
+                              "Dozens",
+                              "Many",
+                              "A lot",
+                              "Several",
+                              "Some",
+                              "A few",
+                              "A couple",
+                              "Fractions of"))
+
+#Modify Theme:
+source("C:/Users/Ltischer/Documents/Studium/A Master/Geostatistics/R-Skripte/perceptions-master/ztheme.R")
+z_theme() # have a look at the theme
+
+#Plot probability data
+ggplot(probly,aes(variable,value))+
+  geom_boxplot(aes(fill=variable),alpha=.5)+
+  geom_jitter(aes(color=variable),size=3,alpha=.2)+
+  scale_y_continuous(breaks=seq(0,1,.1), labels=scales::percent)+
+  guides(fill=FALSE,color=FALSE)+
+  labs(title="Perceptions of Probability",
+       x="Phrase",
+       y="Assigned Probability",
+       caption="created by /u/zonination")+
+  coord_flip()+
+  z_theme()
+#ggsave("plot1.png", height=8, width=8, dpi=120, type="cairo-png") # directly save plot to current work directory
+
+#Plot numberly data
+ggplot(numberly,aes(variable,value))+
+  geom_boxplot(aes(fill=variable),alpha=0.5)+
+  geom_jitter(aes(color=variable),size=3,alpha=.2)+
+  scale_y_log10(labels=trans_format("log10",math_format(10^.x)),
+                breaks=10^(-2:6))+
+  guides(fill=FALSE,color=FALSE)+
+  labs(title="Perceptions of Probability",
+       x="Phrase",
+       y="Assigned Number",
+       caption="created by /u/zonination")+
+  coord_flip()+
+  z_theme()
+#ggsave("plot2.png", height=5, width=8, dpi=120, type="cairo-png")
+
+# Joyplot for probly
+ggplot(probly,aes(y=variable,x=value))+
+  geom_joy(scale=4, aes(fill=variable), alpha=3/4)+
+  scale_x_continuous(breaks=seq(0,1,.1), labels=scales::percent)+
+  guides(fill=FALSE,color=FALSE)+
+  labs(title="Perceptions of Probability",
+       y="",
+       x="Assigned Probability",
+       caption="created by /u/zonination")+
+  z_theme()
+#ggsave("joy1.png", height=8, width=8, dpi=120, type="cairo-png")
+
+#Joyplot for numberly
+ggplot(numberly,aes(y=variable,x=value))+
+  geom_joy(aes(fill=variable, alpha=3/4))+
+  scale_x_log10(labels=trans_format("log10",math_format(10^.x)),
+                breaks=10^(-2:6))+
+  guides(fill=FALSE,color=FALSE)+
+  labs(title="Perceptions of Probability",
+       x="Assigned Number",
+       y="",
+       caption="created by /u/zonination")+
+  z_theme()
+#ggsave("joy2.png", height=5, width=8, dpi=120, type="cairo-png")
+
+
