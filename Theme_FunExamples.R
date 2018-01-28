@@ -168,9 +168,115 @@ if (sqrt(x) == sqrt(10)){
 
 
 
-## 5) Drawing a Christmas Tree #####
+## 7) Drawing a Christmas Tree #####
 cat(c("\u4D\u65\u72\u72\u79\u20\u43\u68\u72\u69\u73\u74\u6D\u61\u73\u0A\u74\u6F\u20\u61\u6c\u6c\u20\u45\u41\u47\u4C\u45\u20\u73\u74\u75\u64\u65\u6E\u74\u73\u21\u0A\u0A",unlist(lapply(c(1:17*2-1,rep(3,6)),function(x)
 cat(rep("\u20",(37-x)/2),".",rep("\u23", x), ".\n", sep="")))))
 
+
+
+
+## 6) package praise - praises the coder
+devtools::install_github("gaborcsardi/praise")
+library(praise)
+praise() # print only adjectives
+praise("${EXCLAMATION}! You have done this ${adverb_manner}!") # print exlamation and adjective
+# see further examples on: https://github.com/rladies/praise
+
+## 8) Sunset and rise ####
+install.packages("suncalc")
+install.packages("V8")
+library(suncalc)
+library(V8)
+getSunlightTimes(date = Sys.Date(), lat = 50.1, lon = 1.83, tz = "CET")
+
+## 9) drawing in Candinsky-style ####
+
+#(!!! R version is to old, version 3.3.3 is required)
+
+devtools::install_github("gsimchoni/kandinsky")
+library(kandinsky)
+
+## 10) Displaying networks ####
+
+library(network)
+library(sna)
+library(maps)
+library(ggplot2)
+library(GGally)
+
+
+
+#(!!! the following is the example code from: https://ggobi.github.io/ggally/#example_us_airports)
+
+
+
+airports <- read.csv("http://datasets.flowingdata.com/tuts/maparcs/airports.csv", header = TRUE)
+rownames(airports) <- airports$iata
+
+# select some random flights
+set.seed(1234)
+flights <- data.frame(
+  origin = sample(airports[200:400, ]$iata, 200, replace = TRUE),
+  destination = sample(airports[200:400, ]$iata, 200, replace = TRUE)
+)
+
+# convert to network
+flights <- network(flights, directed = TRUE)
+
+# add geographic coordinates
+flights %v% "lat" <- airports[ network.vertex.names(flights), "lat" ]
+flights %v% "lon" <- airports[ network.vertex.names(flights), "long" ]
+
+# drop isolated airports
+delete.vertices(flights, which(degree(flights) < 2))
+
+# compute degree centrality
+flights %v% "degree" <- degree(flights, gmode = "digraph")
+
+# add random groups
+flights %v% "mygroup" <- sample(letters[1:4], network.size(flights), replace = TRUE)
+
+delete.vertices(flights, which(flights %v% "lon" < min(usa$data$long)))
+delete.vertices(flights, which(flights %v% "lon" > max(usa$data$long)))
+delete.vertices(flights, which(flights %v% "lat" < min(usa$data$lat)))
+delete.vertices(flights, which(flights %v% "lat" > max(usa$data$lat)))
+
+# create a map of the USA
+usa <- ggplot(map_data("usa"), aes(x = long, y = lat)) +
+  geom_polygon(aes(group = group), color = "grey65",
+               fill = "#f9f9f9", size = 0.2)
+
+# overlay network data to map
+p <- ggnetworkmap(
+  usa, flights, size = 4, great.circles = TRUE,
+  node.group = mygroup, segment.color = "steelblue",
+  ring.group = degree, weight = degree)
+p
+
+
+## 11) Colorblindr ####
+
+# instell packages needed
+devtools::install_github("wilkelab/cowplot")
+install.packages("colorspace", repos = "http://R-Forge.R-project.org")
+library(colorspace)
+library(cowplot)
+
+devtools::install_github("clauswilke/colorblindr")
+
+# plot the first plot
+library(ggplot2)
+fig <- ggplot(iris, aes(Sepal.Length, fill = Species)) + geom_density(alpha = 0.7)
+fig
+
+# vary the plot using differen color shemes
+library(colorblindr)
+cvd_grid(fig)
+
+# suitable plot for people with color-vision problems
+fig2 <- ggplot(iris, aes(Sepal.Length, fill = Species)) + 
+  geom_density(alpha = 0.7) + scale_fill_OkabeIto()
+fig2
+cvd_grid(fig2) # same grid, but better for people with color-vision problems
 
 
